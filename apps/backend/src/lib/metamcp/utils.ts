@@ -1,5 +1,7 @@
 import { DatabaseMcpServer, ServerParameters } from "@repo/zod-types";
 
+import logger from "@/utils/logger";
+
 import { oauthSessionsRepository } from "../../db/repositories/oauth-sessions.repo";
 
 /**
@@ -21,7 +23,32 @@ export const DEFAULT_INHERITED_ENV_VARS =
         "USERPROFILE",
       ]
     : /* list inspired by the default env inheritance of sudo */
-      ["HOME", "LOGNAME", "PATH", "SHELL", "TERM", "USER"];
+      [
+        "HOME",
+        "LOGNAME",
+        "PATH",
+        "SHELL",
+        "TERM",
+        "USER",
+        // SSL/Certificate variables for corporate proxies and custom CA certificates
+        "NODE_EXTRA_CA_CERTS",
+        "NODE_TLS_REJECT_UNAUTHORIZED",
+        "SSL_CERT_FILE",
+        "CERT_FILE",
+        "REQUESTS_CA_BUNDLE",
+        "REQUESTS_CERT_FILE",
+        "CURL_CA_BUNDLE",
+        "PIP_CERT",
+        "UV_CERT",
+        "PYTHONHTTPSVERIFY",
+        // Proxy variables
+        "HTTP_PROXY",
+        "HTTPS_PROXY",
+        "NO_PROXY",
+        "http_proxy",
+        "https_proxy",
+        "no_proxy",
+      ];
 
 /**
  * Returns a default environment object including only environment variables deemed safe to inherit.
@@ -89,6 +116,7 @@ export async function convertDbServerToParams(
       stderr: "inherit" as const,
       oauth_tokens: oauthTokens,
       bearerToken: server.bearerToken,
+      headers: server.headers || {},
     };
 
     // Process based on server type
@@ -104,7 +132,7 @@ export async function convertDbServerToParams(
     } else if (params.type === "SSE" || params.type === "STREAMABLE_HTTP") {
       // For SSE or STREAMABLE_HTTP servers, ensure url is present
       if (!params.url) {
-        console.warn(
+        logger.warn(
           `${params.type} server ${params.uuid} is missing url field, skipping`,
         );
         return null;
@@ -113,7 +141,7 @@ export async function convertDbServerToParams(
 
     return params;
   } catch (error) {
-    console.error(
+    logger.error(
       `Error converting server ${server.uuid} to parameters:`,
       error,
     );
@@ -141,12 +169,12 @@ export function resolveEnvVariables(
       const varName = value.slice(2, -1);
       if (process.env[varName]) {
         resolved[key] = process.env[varName];
-        console.log(
+        logger.info(
           `Resolved environment variable: ${key}=${value} -> ${varName}=[REDACTED]`,
         );
       } else {
         resolved[key] = value; // Keep original value if env var not found
-        console.warn(
+        logger.warn(
           `Environment variable not found: ${varName}, keeping original value: ${value}`,
         );
       }

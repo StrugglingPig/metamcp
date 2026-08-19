@@ -6,6 +6,8 @@ import { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
 import { JSONRPCMessage } from "@modelcontextprotocol/sdk/types.js";
 import spawn from "cross-spawn";
 
+import logger from "@/utils/logger";
+
 import { ReadBuffer, serializeMessage } from "./shared";
 
 export type StdioServerParameters = {
@@ -61,7 +63,32 @@ export const DEFAULT_INHERITED_ENV_VARS =
         "PROGRAMFILES",
       ]
     : /* list inspired by the default env inheritance of sudo */
-      ["HOME", "LOGNAME", "PATH", "SHELL", "TERM", "USER"];
+      [
+        "HOME",
+        "LOGNAME",
+        "PATH",
+        "SHELL",
+        "TERM",
+        "USER",
+        // SSL/Certificate variables for corporate proxies and custom CA certificates
+        "NODE_EXTRA_CA_CERTS",
+        "NODE_TLS_REJECT_UNAUTHORIZED",
+        "SSL_CERT_FILE",
+        "CERT_FILE",
+        "REQUESTS_CA_BUNDLE",
+        "REQUESTS_CERT_FILE",
+        "CURL_CA_BUNDLE",
+        "PIP_CERT",
+        "UV_CERT",
+        "PYTHONHTTPSVERIFY",
+        // Proxy variables
+        "HTTP_PROXY",
+        "HTTPS_PROXY",
+        "NO_PROXY",
+        "http_proxy",
+        "https_proxy",
+        "no_proxy",
+      ];
 
 /**
  * Returns a default environment object including only environment variables deemed safe to inherit.
@@ -161,8 +188,8 @@ export class ProcessManagedStdioTransport implements Transport {
       this._process.on("close", (code, signal) => {
         // Only emit crash event if this wasn't a clean shutdown
         if (!this._isCleanup && (code !== 0 || signal)) {
-          console.warn(`Process crashed with code: ${code}, signal: ${signal}`);
-          console.log(
+          logger.warn(`Process crashed with code: ${code}, signal: ${signal}`);
+          logger.info(
             `Calling onprocesscrash handler: ${this.onprocesscrash ? "handler exists" : "no handler"}`,
           );
           this.onprocesscrash?.(code, signal);
@@ -240,7 +267,7 @@ export class ProcessManagedStdioTransport implements Transport {
         process.kill(-this._process.pid, "SIGTERM");
       } catch (error) {
         // Process might already be terminated, ignore errors
-        console.warn("Failed to kill process group:", error);
+        logger.warn("Failed to kill process group:", error);
       }
     }
 

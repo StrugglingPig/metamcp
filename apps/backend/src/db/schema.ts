@@ -9,6 +9,7 @@ import { sql } from "drizzle-orm";
 import {
   boolean,
   index,
+  integer,
   jsonb,
   pgEnum,
   pgTable,
@@ -57,6 +58,10 @@ export const mcpServersTable = pgTable(
       .notNull()
       .defaultNow(),
     bearerToken: text("bearer_token"),
+    headers: jsonb("headers")
+      .$type<{ [key: string]: string }>()
+      .notNull()
+      .default(sql`'{}'::jsonb`),
     user_id: text("user_id").references(() => usersTable.id, {
       onDelete: "cascade",
     }),
@@ -247,6 +252,16 @@ export const endpointsTable = pgTable(
       .references(() => namespacesTable.uuid, { onDelete: "cascade" }),
     enable_api_key_auth: boolean("enable_api_key_auth").notNull().default(true),
     enable_oauth: boolean("enable_oauth").notNull().default(false),
+    enable_max_rate: boolean("enable_max_rate").notNull().default(false),
+    enable_client_max_rate: boolean("enable_client_max_rate")
+      .notNull()
+      .default(false),
+    max_rate: integer("max_rate"),
+    max_rate_seconds: integer("max_rate_seconds"),
+    client_max_rate: integer("client_max_rate"),
+    client_max_rate_seconds: integer("client_max_rate_seconds"),
+    client_max_rate_strategy: text("client_max_rate_strategy"),
+    client_max_rate_strategy_key: text("client_max_rate_strategy_key"),
     use_query_param_auth: boolean("use_query_param_auth")
       .notNull()
       .default(false),
@@ -322,7 +337,11 @@ export const namespaceToolMappingsTable = pgTable(
       .notNull()
       .default(McpServerStatusEnum.Enum.ACTIVE),
     override_name: text("override_name"),
+    override_title: text("override_title"),
     override_description: text("override_description"),
+    override_annotations: jsonb("override_annotations")
+      .$type<Record<string, unknown> | null>()
+      .default(sql`NULL`),
     created_at: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
